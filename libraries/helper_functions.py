@@ -2,7 +2,8 @@ import pickle
 import numpy as np
 from functools import reduce
 import pandas as pd
-
+from pathlib import Path
+from sklearn.metrics import fbeta_score
 
 def val_idxs_from_csv(csv_path, ratio=0.2, load_from_disk=False, file='val_idxs.pkl'):
 	"""
@@ -48,3 +49,23 @@ def val_idxs_from_csv(csv_path, ratio=0.2, load_from_disk=False, file='val_idxs.
 	val_file.close()
 
 	return val_idxs
+
+def create_submission(probs, data, threshold=0.2):
+	classes = np.array(data.classes, dtype=str)
+	filenames = [Path(f).stem for f in data.test_ds.fnames]
+
+	labels = np.array([" ".join(classes[p>threshold]) for p in probs])
+
+	res = np.array(tuple(zip(filenames, labels)))
+	res_df = pd.DataFrame(res, columns=['image_name', 'tags'])
+
+	return res_df
+
+def f2(true, preds):
+	return fbeta_score(true, preds, beta=2, average='samples')
+
+def get_threshold(true, probs, start=0.1, stop=0.4, step=0.01):
+	thresholds = np.arange(start, stop, step)
+	f2s = [f2(true, probs>th) for th in thresholds]
+	return thresholds[np.argmax(f2s)]
+		
