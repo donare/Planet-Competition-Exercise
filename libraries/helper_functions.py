@@ -4,6 +4,7 @@ from functools import reduce
 import pandas as pd
 from pathlib import Path
 from sklearn.metrics import fbeta_score
+import warnings
 
 def val_idxs_from_csv(csv_path, ratio=0.2, load_from_disk=False, file='val_idxs.pkl'):
 	"""
@@ -61,11 +62,19 @@ def create_submission(probs, data, threshold=0.2):
 
 	return res_df
 
-def f2(true, preds):
-	return fbeta_score(true, preds, beta=2, average='samples')
+def f2(preds, targs):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        return fbeta_score(targs, preds, beta=2, average='samples')
 
-def get_threshold(true, probs, start=0.1, stop=0.4, step=0.01):
+def f2_th_raw(probs, targs, start=0.1, stop=0.4, step=0.01):
 	thresholds = np.arange(start, stop, step)
-	f2s = [f2(true, probs>th) for th in thresholds]
-	return thresholds[np.argmax(f2s)]
+	f2s = [f2(targs, probs>th) for th in thresholds]
+	return thresholds[np.argmax(f2s)], np.max(f2s)
+
+def get_threshold(probs, targs, start=0.1, stop=0.4, step=0.01):
+    return f2_th_raw(probs, targs, start, stop, step)[0]
+
+def f2_th(probs, targs, start=0.1, stop=0.4, step=0.01):
+    return f2_th_raw(probs, targs, start, stop, step)[1]
 		
